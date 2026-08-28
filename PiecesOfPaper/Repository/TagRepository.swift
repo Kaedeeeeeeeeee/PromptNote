@@ -1,0 +1,159 @@
+import Foundation
+import os
+
+protocol TagRepositoryProtocol {
+    // Coordination happens off the main actor inside CoordinatedFileAccess, so
+    // these only hop back here to keep callers and the tag list on one actor.
+    @MainActor func fetchAll() async -> [TagEntity]
+    @MainActor @discardableResult
+    func saveAll(_ tags: [TagEntity]) async -> Bool
+}
+
+/// Where the tag list file stands relative to iCloud download state.
+enum TagListFileState {
+    case downloaded
+    /// Only the ".taglist.json.icloud" placeholder exists: the file lives in
+    /// iCloud but has not been downloaded yet.
+    case inCloudOnly
+    case absent
+
+    static func check(for url: URL, fileManager: FileManager = .default) -> TagListFileState {
+        if fileManager.fileExists(atPath: url.path) {
+            return .downloaded
+        }
+        let placeholderUrl = url.deletingLastPathComponent()
+            .appendingPathComponent("." + url.lastPathComponent + ".icloud")
+        if fileManager.fileExists(atPath: placeholderUrl.path) {
+            return .inCloudOnly
+        }
+        return .absent
+    }
+}
+
+struct TagRepository: TagRepositoryProtocol {
+    // Fixed ids so the in-memory defaults stay identical across launches:
+    // notes reference tags by id, so ids regenerated per launch would detach
+    // notes from their default tags.
+    // Not optional-handled: the arguments are literals checked at every build,
+    // so a nil here would be a typo, not a runtime condition.
+    // swiftlint:disable force_unwrapping
+    private var defaultTags = [
+        TagEntity(id: UUID(uuidString: "1D9C7A80-1E5B-4A61-9F0A-6C39F1A0D001")!,
+                  name: "💡idea", color: CodableUIColor(uiColor: .systemYellow)),
+        TagEntity(id: UUID(uuidString: "1D9C7A80-1E5B-4A61-9F0A-6C39F1A0D002")!,
+                  name: "🗒memo", color: CodableUIColor(uiColor: .systemBlue)),
+        TagEntity(id: UUID(uuidString: "1D9C7A80-1E5B-4A61-9F0A-6C39F1A0D003")!,
+                  name: "📓note", color: CodableUIColor(uiColor: .systemGreen)),
+        TagEntity(id: UUID(uuidString: "1D9C7A80-1E5B-4A61-9F0A-6C39F1A0D004")!,
+                  name: "🎨doodle", color: CodableUIColor(uiColor: .systemOrange))
+    ]
+    // swiftlint:enable force_unwrapping
+
+    private let tagListFileUrl: URL?
+    private let fileManager: FileManager
+
+    init(tagListFileUrl: URL? = FilePath.tagListFileUrl, fileManager: FileManager = .default) {
+        self.tagListFileUrl = tagListFileUrl
+        self.fileManager = fileManager
+    }
+
+    // Never writes to disk: creating defaults while the iCloud copy is merely
+    // undownloaded would sync them back and wipe the user's tag list (#199).
+    // Defaults are persisted lazily by the first user edit through saveAll.
+    @MainActor
+    func fetchAll() async -> [TagEntity] {
+        guard let tagListFileUrl else { return [] }
+        syncFile(url: tagListFileUrl)
+
+        // Checked before coordinating as well: a coordinated read of an
+        // undownloaded item waits for the download, which would hang the tag
+        // list behind an offline device instead of returning the empty list.
+        guard TagListFileState.check(for: tagListFileUrl, fileManager: fileManager) != .inCloudOnly else {
+            return []
+        }
+
+        let fileManager = self.fileManager
+        let defaultTags = self.defaultTags
+        do {
+            return try await CoordinatedFileAccess.read(at: tagListFileUrl) { url in
+                switch TagListFileState.check(for: url, fileManager: fileManager) {
+                case .downloaded:
+                    return Self.loadTags(from: url, fileManager: fileManager)
+                case .inCloudOnly:
+                    return []
+                case .absent:
+                    return defaultTags
+                }
+            }
+        } catch {
+            Logger.tagRepository.error("Failed to read the tag list: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
+    @MainActor @discardableResult
+    func saveAll(_ tags: [TagEntity]) async -> Bool {
+        guard let tagListFileUrl else { return false }
+        syncFile(url: tagListFileUrl)
+
+        // Refuse to write over an undownloaded iCloud copy: the caller only
+        // sees the transient empty list, so persisting it would overwrite the
+        // real tag list once the write syncs.
+        guard TagListFileState.check(for: tagListFileUrl, fileManager: fileManager) != .inCloudOnly else {
+            return false
+        }
+
+        let fileManager = self.fileManager
+        do {
+            let data = try JSONEncoder().encode(tags)
+            try await CoordinatedFileAccess.write(at: tagListFileUrl, options: .forReplacing) { url in
+                let libraryUrl = url.deletingLastPathComponent()
+                if !fileManager.fileExists(atPath: libraryUrl.path) {
+                    try fileManager.createDirectory(at: libraryUrl, withIntermediateDirectories: true)
+                }
+                guard TagListFileState.check(for: url, fileManager: fileManager) != .inCloudOnly else {
+                    throw TagRepositoryError.tagListNotDownloaded
+                }
+                try data.write(to: url, options: .atomic)
+            }
+            return true
+        } catch {
+            Logger.tagRepository.error("Failed to save the tag list: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
+    private static func loadTags(from url: URL, fileManager: FileManager) -> [TagEntity] {
+        guard fileManager.fileExists(atPath: url.path),
+              let content = fileManager.contents(atPath: url.path) else { return [] }
+
+        let decoder = JSONDecoder()
+        do {
+            return try decoder.decode([TagEntity].self, from: content)
+        } catch {
+            Logger.tagRepository.error("Tag list file format error: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
+    private func syncFile(url: URL) {
+        do {
+            try fileManager.startDownloadingUbiquitousItem(at: url)
+        } catch {
+            Logger.tagRepository.error(
+                "Failed to start downloading the tag list: \(error.localizedDescription, privacy: .public)"
+            )
+        }
+    }
+}
+
+enum TagRepositoryError: LocalizedError {
+    case tagListNotDownloaded
+
+    var errorDescription: String? {
+        switch self {
+        case .tagListNotDownloaded:
+            "The tag list has not been downloaded from iCloud yet."
+        }
+    }
+}

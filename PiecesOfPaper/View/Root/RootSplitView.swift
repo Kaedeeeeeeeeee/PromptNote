@@ -1,0 +1,175 @@
+import SwiftUI
+
+struct RootSplitView: View {
+    @State private var noteStore = NoteStore()
+    @State private var tagStore = TagStore()
+    @Environment(PreferenceStore.self) private var preferenceStore
+    @State private var selection: Page? = .inbox
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var columnVisibility: NavigationSplitViewVisibility = .detailOnly
+
+    private enum Page: String, CaseIterable {
+        case inbox, trash
+        case tag
+        case whatsNew
+        case tutorial
+        case setting
+
+        var label: String {
+            switch self {
+            case .inbox: "Inbox"
+            case .trash: "Trash"
+            case .tag: "Tag List"
+            case .whatsNew: "What's New"
+            case .tutorial: "Quick Tutorial"
+            case .setting: "Settings"
+            }
+        }
+    }
+
+    var body: some View {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            pageList
+        } detail: {
+            switch selection {
+            case .inbox:
+                NoteListScreen(directory: .inbox)
+            case .trash:
+                NoteListScreen(directory: .archived)
+            case .tag:
+                TagList()
+            case .whatsNew:
+                WhatsNewView()
+            case .tutorial:
+                TutorialView()
+            case .setting:
+                SettingView()
+            default:
+                Text("Unknown page")
+            }
+        }
+        // Inside the .environment chain: cover content only inherits values
+        // injected outside its attachment point
+        .fullScreenCover(item: $noteStore.openedNote) { note in
+            NavigationStack {
+                CanvasView(note: note)
+            }
+            // CanvasView seeds its @State from init, so an identity change is
+            // what swaps the drawing when openedNote is replaced mid-cover
+            .id(note.id)
+        }
+        .onAppear {
+            noteStore.onLegacyTagsDecoded = { tagStore.restoreIfEmpty($0) }
+            FilePath.startObservingUbiquityChanges {
+                FilePath.makeDirectoryIfNeeded()
+                preferenceStore.refreshCloudAvailability()
+                Task { await noteStore.applyCloudUpdate() }
+            }
+        }
+        .onOpenURL { url in
+            noteStore.handleIncomingURL(url)
+        }
+        .alert("", isPresented: $noteStore.showExternalOpenAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(NoteStoreError.openFailure(from: noteStore.externalOpenError ?? NoteRepositoryError.fileOpenFailed(path: ""),
+                                            count: 1).localizedDescription)
+        }
+        // The store owner, so each transition is handled once per app, not
+        // once per NoteListScreen instance
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active:
+                // The ubiquity observer already re-resolved the container on
+                // willEnterForeground; this picks up input changes that don't
+                // move the storage location (e.g. the account token)
+                preferenceStore.refreshCloudAvailability()
+                guard !preferenceStore.cloudAvailability.isDegraded else { return }
+                noteStore.sceneDidBecomeActive()
+            case .background:
+                noteStore.sceneDidEnterBackground()
+                noteStore.flushMetadataCache()
+            default:
+                break
+            }
+        }
+        .environment(noteStore)
+        .environment(tagStore)
+        // Read here, not in the App's Scene body: preferredColorScheme is a
+        // preference that flows up to the scene host, and reading the store from
+        // a View body is what guarantees Observation re-evaluates it
+        .preferredColorScheme(preferenceStore.appearanceMode.colorScheme)
+    }
+
+    private var pageList: some View {
+        List(selection: $selection) {
+            Section(header: Text("Folders")) {
+                NavigationLink(value: Page.inbox) {
+                    Label(Page.inbox.label, systemImage: "tray")
+                }
+
+                NavigationLink(value: Page.trash) {
+                    Label(Page.trash.label, systemImage: "trash")
+                }
+            }
+            Section(header: Text("Tags")) {
+                NavigationLink(value: Page.tag) {
+                    Label(Page.tag.label, systemImage: "tag")
+                }
+            }
+            Section(header: Text("Manage raw data\n(opens the Files app)")) {
+                Button {
+                    if let path = FilePath.inboxUrl?.path(),
+                       let url = URL(string: "shareddocuments://" + path),
+                       UIApplication.shared.canOpenURL(url) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Label(Page.inbox.label, systemImage: "tray")
+                }
+                Button {
+                    if let path = FilePath.archivedUrl?.path(),
+                       let url = URL(string: "shareddocuments://" + path),
+                       UIApplication.shared.canOpenURL(url) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Label(Page.trash.label, systemImage: "trash")
+                }
+            }
+            Section(header: Text("Tutorial")) {
+                NavigationLink(value: Page.whatsNew) {
+                    HStack {
+                        Label(Page.whatsNew.label, systemImage: "sparkles")
+                        if let latest = ReleaseNote.latest,
+                           preferenceStore.hasUnseenWhatsNew(latestVersion: latest.version) {
+                            Spacer()
+                            unreadDot
+                        }
+                    }
+                }
+                NavigationLink(value: Page.tutorial) {
+                    Label(Page.tutorial.label, systemImage: "text.document")
+                }
+            }
+            Section(header: Text("Settings")) {
+                NavigationLink(value: Page.setting) {
+                    Label(Page.setting.label, systemImage: "gearshape")
+                }
+            }
+        }
+        .navigationTitle("Pieces of Paper")
+    }
+
+    private var unreadDot: some View {
+        Circle()
+            .fill(.red)
+            .frame(width: 8, height: 8)
+            .accessibilityLabel("New")
+    }
+}
+
+#Preview {
+    RootSplitView()
+        .environment(PreferenceStore())
+}

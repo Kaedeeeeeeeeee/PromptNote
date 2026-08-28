@@ -1,0 +1,268 @@
+import UIKit
+import os
+
+enum NoteDirectory: String {
+    case inbox, archived
+
+    var url: URL? {
+        switch self {
+        case .inbox: FilePath.inboxUrl
+        case .archived: FilePath.archivedUrl
+        }
+    }
+}
+
+struct NoteFileAttributes: Equatable {
+    let fileURL: URL
+    let creationDate: Date?
+    let contentModificationDate: Date?
+}
+
+protocol NoteRepositoryProtocol: AnyObject {
+    @MainActor var isCloudStorageActive: Bool { get }
+    @MainActor func getFileAttributes(directory: NoteDirectory) async -> [NoteFileAttributes]
+    func fileAttributes(at fileUrl: URL) -> NoteFileAttributes?
+    @MainActor func setCloudUpdateHandler(_ handler: @escaping @MainActor () -> Void)
+    @MainActor func open(fileUrl: URL) async throws -> NoteData
+    @MainActor func save(_ entity: NoteEntity, to fileUrl: URL) async throws
+    // Coordination happens off the main actor inside CoordinatedFileAccess, so
+    // these only hop back here to keep callers and the index on one actor.
+    @MainActor func delete(fileUrl: URL) async throws
+    @MainActor func move(fileUrl: URL, to directory: NoteDirectory) async throws -> URL
+    func duplicate(_ note: NoteData, in directory: NoteDirectory,
+                   completion: @escaping (NoteData?) -> Void)
+}
+
+final class NoteRepository: NoteRepositoryProtocol {
+    @MainActor private var cloudMonitor: CloudNoteMonitor?
+    @MainActor private var cloudUpdateHandler: (@MainActor () -> Void)?
+
+    @MainActor var isCloudStorageActive: Bool {
+        FilePath.isiCloudActive
+    }
+
+    @MainActor
+    func getFileAttributes(directory: NoteDirectory) async -> [NoteFileAttributes] {
+        guard let directoryUrl = directory.url else { return [] }
+        LegacyNoteMigrator.migrate(in: directoryUrl)
+        guard FilePath.isiCloudActive else {
+            stopCloudMonitor()
+            return localFileAttributes(in: directoryUrl)
+        }
+        let directoryPath = directoryUrl.resolvingSymlinksInPath().path
+        var seen = Set<URL>()
+        return await monitor().items()
+            .filter { $0.fileURL.resolvingSymlinksInPath().deletingLastPathComponent().path == directoryPath }
+            .map {
+                NoteFileAttributes(fileURL: resolveMigratedUrl($0.fileURL),
+                                   creationDate: $0.creationDate,
+                                   contentModificationDate: $0.contentModificationDate)
+            }
+            .filter { seen.insert($0.fileURL).inserted }
+    }
+
+    // The metadata query and already-open notes can still hold a pre-rename
+    // .plist URL after LegacyNoteMigrator moved the file. Point such URLs at
+    // the renamed file so enumeration and saves never target a path that no
+    // longer exists (a save to the stale path would fork the note).
+    private func resolveMigratedUrl(_ fileUrl: URL) -> URL {
+        guard fileUrl.pathExtension == FilePath.legacyNoteFileExtension,
+              !FileManager.default.fileExists(atPath: fileUrl.path) else { return fileUrl }
+        let migratedUrl = fileUrl.deletingPathExtension()
+            .appendingPathExtension(FilePath.noteFileExtension)
+        return FileManager.default.fileExists(atPath: migratedUrl.path) ? migratedUrl : fileUrl
+    }
+
+    @MainActor
+    func setCloudUpdateHandler(_ handler: @escaping @MainActor () -> Void) {
+        cloudUpdateHandler = handler
+    }
+
+    // Fallback when notes are stored in the local Documents directory,
+    // where NSMetadataQuery finds nothing.
+    private func localFileUrls(in directoryUrl: URL) -> [URL] {
+        guard var fileNames = try? FileManager.default.contentsOfDirectory(atPath: directoryUrl.path) else { return [] }
+        fileNames = fileNames.filter {
+            $0.hasSuffix("." + FilePath.noteFileExtension)
+                || $0.hasSuffix("." + FilePath.legacyNoteFileExtension)
+        }
+        return fileNames.map { directoryUrl.appendingPathComponent($0) }
+    }
+
+    func fileAttributes(at fileUrl: URL) -> NoteFileAttributes? {
+        guard let values = try? fileUrl.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey]) else {
+            return nil
+        }
+        return NoteFileAttributes(fileURL: fileUrl,
+                                  creationDate: values.creationDate,
+                                  contentModificationDate: values.contentModificationDate)
+    }
+
+    func localFileAttributes(in directoryUrl: URL) -> [NoteFileAttributes] {
+        localFileUrls(in: directoryUrl).map { fileUrl in
+            let values = try? fileUrl.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+            return NoteFileAttributes(fileURL: fileUrl,
+                                      creationDate: values?.creationDate,
+                                      contentModificationDate: values?.contentModificationDate)
+        }
+    }
+
+    @MainActor
+    private func monitor() -> CloudNoteMonitor {
+        if let cloudMonitor { return cloudMonitor }
+        let monitor = CloudNoteMonitor()
+        monitor.onUpdate = { [weak self] in self?.cloudUpdateHandler?() }
+        cloudMonitor = monitor
+        return monitor
+    }
+
+    @MainActor
+    private func stopCloudMonitor() {
+        cloudMonitor?.stop()
+        cloudMonitor = nil
+    }
+
+    @MainActor
+    func open(fileUrl: URL) async throws -> NoteData {
+        // No blanket fileExists guard: an undownloaded iCloud note has no local
+        // file yet. Kick off the download and let UIDocument's coordinated read
+        // wait for it. But a missing file that is not a ubiquitous item can
+        // never arrive, and open() on it waits forever — fail fast instead
+        // (stale index entry, note deleted from another device).
+        if !FileManager.default.fileExists(atPath: fileUrl.path) {
+            do {
+                try FileManager.default.startDownloadingUbiquitousItem(at: fileUrl)
+            } catch {
+                let isUbiquitous = (try? fileUrl.resourceValues(forKeys: [.isUbiquitousItemKey]))?
+                    .isUbiquitousItem ?? false
+                if !isUbiquitous {
+                    Logger.noteRepository.error("Open target missing and not ubiquitous: \(fileUrl.path, privacy: .public)")
+                    throw NoteRepositoryError.fileNotFound(path: fileUrl.path)
+                }
+            }
+        }
+        let document = NoteDocument(fileURL: fileUrl)
+        let isSuccess = await document.open()
+        // Close only after a successful open: close() on a failed document
+        // never calls its completion handler and hangs the caller forever
+        if isSuccess {
+            await document.close()
+            return NoteData(entity: document.entity, fileURL: fileUrl)
+        } else {
+            throw openFailureError(for: fileUrl)
+        }
+    }
+
+    // UIDocument.open() reports only Bool, so the undownloaded case is
+    // reconstructed from the item's downloading status; local files have no
+    // ubiquitous resource values and keep the corrupt-file diagnosis.
+    private func openFailureError(for fileUrl: URL) -> NoteRepositoryError {
+        let values = try? fileUrl.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey])
+        if let status = values?.ubiquitousItemDownloadingStatus, status != .current {
+            return .fileNotDownloaded(path: fileUrl.path)
+        }
+        return .fileOpenFailed(path: fileUrl.path)
+    }
+
+    @MainActor
+    func save(_ entity: NoteEntity, to fileUrl: URL) async throws {
+        let targetUrl = resolveMigratedUrl(fileUrl)
+        let directoryUrl = targetUrl.deletingLastPathComponent()
+        // .forCreating does not create intermediate directories; without this a
+        // missing parent (fresh container, storage location change) fails the
+        // save with no user-visible reason.
+        if !FileManager.default.fileExists(atPath: directoryUrl.path) {
+            try FileManager.default.createDirectory(at: directoryUrl, withIntermediateDirectories: true)
+        }
+        // The transient document lives until the completion handler fires,
+        // which keeps its conflict observer active for the whole save.
+        let document = NoteDocument(fileURL: targetUrl, entity: entity)
+        let saveOperation: UIDocument.SaveOperation =
+            FileManager.default.fileExists(atPath: targetUrl.path) ? .forOverwriting : .forCreating
+        let success = await withCheckedContinuation { continuation in
+            document.save(to: targetUrl, for: saveOperation) { continuation.resume(returning: $0) }
+        }
+        guard success else {
+            Logger.noteRepository.error("""
+            Save failed at \(targetUrl.path, privacy: .public): \
+            \(String(describing: document.lastHandledError), privacy: .public)
+            """)
+            throw NoteRepositoryError.saveFailed(path: targetUrl.path, underlying: document.lastHandledError)
+        }
+        // UIDocument can report success while leaving nothing usable on disk
+        // (issue #225 reports drawings vanishing right after save); trust the
+        // file system over the completion flag.
+        let fileSize = (try? FileManager.default.attributesOfItem(atPath: targetUrl.path))?[.size] as? Int ?? 0
+        guard fileSize > 0 else {
+            Logger.noteRepository.error("Save reported success but no data exists at \(targetUrl.path, privacy: .public)")
+            throw NoteRepositoryError.saveVerificationFailed(path: targetUrl.path)
+        }
+    }
+
+    @MainActor
+    func delete(fileUrl: URL) async throws {
+        try await CoordinatedFileAccess.write(at: fileUrl, options: .forDeleting) { url in
+            try FileManager.default.removeItem(at: url)
+        }
+    }
+
+    @MainActor
+    func move(fileUrl: URL, to directory: NoteDirectory) async throws -> URL {
+        guard let directoryUrl = directory.url else {
+            throw NoteRepositoryError.directoryNotAvailable
+        }
+        return try await move(fileUrl: fileUrl, toDirectoryAt: directoryUrl)
+    }
+
+    // NoteDirectory resolves to the app container, so tests reach the coordinated
+    // move through this overload with a temporary directory instead.
+    @MainActor
+    func move(fileUrl: URL, toDirectoryAt directoryUrl: URL) async throws -> URL {
+        let toUrl = directoryUrl.appendingPathComponent(fileUrl.lastPathComponent)
+        return try await CoordinatedFileAccess.move(from: fileUrl, to: toUrl)
+    }
+
+    func duplicate(_ note: NoteData, in directory: NoteDirectory,
+                   completion: @escaping (NoteData?) -> Void) {
+        guard let directoryUrl = directory.url else {
+            completion(nil)
+            return
+        }
+        let newUrl = directoryUrl.appendingPathComponent(FilePath.fileName)
+        let entity = NoteEntity(drawing: note.entity.drawing)
+        let newDocument = NoteDocument(fileURL: newUrl, entity: entity)
+        newDocument.save(to: newUrl, for: .forCreating) { success in
+            completion(success ? NoteData(entity: entity, fileURL: newUrl) : nil)
+        }
+    }
+}
+
+enum NoteRepositoryError: LocalizedError {
+    case fileOpenFailed(path: String)
+    case fileNotDownloaded(path: String)
+    case fileNotFound(path: String)
+    case saveFailed(path: String, underlying: Error?)
+    case saveVerificationFailed(path: String)
+    case directoryNotAvailable
+
+    var errorDescription: String? {
+        switch self {
+        case .fileOpenFailed(let path):
+            "Failed to open the file at \(path)."
+        case .fileNotDownloaded(let path):
+            "The note at \(path) has not finished downloading from iCloud."
+        case .fileNotFound(let path):
+            "No file exists at \(path)."
+        case let .saveFailed(path, underlying):
+            if let underlying {
+                "Failed to write \(path): \(underlying.localizedDescription)"
+            } else {
+                "Failed to write \(path)."
+            }
+        case .saveVerificationFailed(let path):
+            "The save finished, but no data exists at \(path)."
+        case .directoryNotAvailable:
+            "The directory is not available."
+        }
+    }
+}

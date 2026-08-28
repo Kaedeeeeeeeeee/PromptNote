@@ -1,0 +1,64 @@
+import SwiftUI
+
+struct SettingView: View {
+    @Environment(PreferenceStore.self) private var preferenceStore
+    private let repositoryUrl = URL(string: "https://github.com/0si43/PiecesOfPaper")
+    private let developerSiteUrl = URL(string: "https://www.shetommy.com/")
+
+    var body: some View {
+        @Bindable var preferenceStore = preferenceStore
+        List {
+            Section(header: Text("Preferences"), footer: preferenceFooter) {
+                Toggle(isOn: $preferenceStore.enablediCloud) {
+                    Label("Enable iCloud", systemImage: "icloud")
+                }
+                Toggle(isOn: $preferenceStore.enabledAutoSave) {
+                    Label("Auto Save", systemImage: "gearshape")
+                }
+                Toggle(isOn: $preferenceStore.enabledInfiniteScroll) {
+                    Label("Infinite Scroll", systemImage: "scroll")
+                }
+                // Not .segmented as elsewhere in the app: that style drops the
+                // label, breaking the Label(_:systemImage:) shape of the rows above
+                Picker(selection: $preferenceStore.appearanceMode) {
+                    ForEach(AppearanceMode.allCases) { mode in
+                        Text(mode.label)
+                            .tag(mode)
+                    }
+                } label: {
+                    Label("Appearance", systemImage: "circle.lefthalf.filled")
+                }
+            }
+            Section(header: Text("About")) {
+                if let url = repositoryUrl {
+                    Link(destination: url) {
+                        Label("GitHub Repository", systemImage: "ellipsis.curlybraces")
+                    }
+                }
+
+                if let url = developerSiteUrl {
+                    Link(destination: url) {
+                        Label("Developer Site", systemImage: "wrench")
+                    }
+                }
+            }
+        }
+        .foregroundColor(.primary)
+    }
+
+    @ViewBuilder private var preferenceFooter: some View {
+        switch preferenceStore.cloudAvailability {
+        case .signedOut:
+            Text("iCloud is on, but this device is not signed in to iCloud. Notes are stored on this device only.")
+        case .driveUnavailable:
+            Text("iCloud is on, but iCloud Drive is not available for this app. Notes are stored on this device only.")
+        case .available, .userDisabled:
+            EmptyView()
+        }
+    }
+}
+
+#Preview {
+    SettingView()
+        .environment(PreferenceStore())
+}

@@ -1,0 +1,99 @@
+import SwiftUI
+import PencilKit
+
+struct NoteThumbnailView: View {
+    let entry: NoteIndexEntry
+    let tags: [TagEntity]
+    @Environment(NoteStore.self) private var noteStore
+    @Environment(NoteListPresentation.self) private var presentation
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var thumbnail: UIImage?
+    @State private var isOpening = false
+
+    // colorScheme is the effective one, i.e. after the appearance preference's
+    // override, so the thumbnail matches the tile it sits on
+    private var interfaceStyle: UIUserInterfaceStyle {
+        colorScheme == .dark ? .dark : .light
+    }
+
+    private var thumbnailKey: String {
+        ThumbnailCache.key(for: entry, style: interfaceStyle)
+    }
+
+    var body: some View {
+        Button(action: openCanvas, label: {
+            Group {
+                if let thumbnail {
+                    Image(uiImage: thumbnail)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: 250, height: 190)
+            .background(Color(UIColor.secondarySystemBackground))
+            .shadow(radius: 5)
+            .overlay {
+                if isOpening {
+                    ProgressView()
+                }
+            }
+        })
+        .accessibilityLabel(Self.accessibilityLabel(updatedDate: entry.updatedDate,
+                                                    tagNames: tags.map(\.name)))
+        .task(id: thumbnailKey) {
+            let key = thumbnailKey
+            if let cached = ThumbnailCache.shared.cached(key: key),
+               noteStore.validMetadata(for: entry) != nil {
+                thumbnail = cached
+                return
+            }
+            // Open the one document, render, and let the drawing go out of
+            // scope; a failed open leaves the placeholder and the next
+            // appearance retries.
+            guard let note = await noteStore.loadNote(entry) else { return }
+            guard !Task.isCancelled else { return }
+            thumbnail = await ThumbnailCache.shared.thumbnail(for: note.entity.drawing,
+                                                              key: key,
+                                                              style: interfaceStyle)
+        }
+    }
+
+    // Notes have no title, so the update date (and tag names, once the
+    // metadata cache knows them) is what distinguishes them under VoiceOver
+    static func accessibilityLabel(updatedDate: Date, tagNames: [String],
+                                   locale: Locale = .current) -> String {
+        let date = updatedDate.formatted(
+            Date.FormatStyle(date: .abbreviated, time: .shortened).locale(locale)
+        )
+        guard !tagNames.isEmpty else { return "Note, \(date)" }
+        return "Note, \(date), tags: \(tagNames.joined(separator: ", "))"
+    }
+
+    // Open-then-present: CanvasView reads the drawing synchronously in
+    // onAppear, so the document must be loaded before the cover shows
+    private func openCanvas() {
+        guard !isOpening else { return }
+        isOpening = true
+        Task {
+            let result = await noteStore.loadNoteResult(entry)
+            isOpening = false
+            switch result {
+            case .success(let note):
+                noteStore.openedNote = note
+            case .failure(let error):
+                presentation.presentOpenFailure(error)
+            }
+        }
+    }
+}
+
+#Preview {
+    NoteThumbnailView(entry: NoteIndexEntry(fileURL: URL(fileURLWithPath: "/preview/2026-01-01-00-00-000000.pop"),
+                                            creationDate: nil,
+                                            contentModificationDate: nil),
+                      tags: [])
+        .environment(NoteStore())
+        .environment(NoteListPresentation())
+}
