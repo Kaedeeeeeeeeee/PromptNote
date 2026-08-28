@@ -158,7 +158,7 @@ struct RootSplitView: View {
                 }
             }
         }
-        .navigationTitle("Pieces of Paper")
+        .navigationTitle("PromptNote")
     }
 
     private var unreadDot: some View {

@@ -2,8 +2,8 @@ import SwiftUI
 
 struct SettingView: View {
     @Environment(PreferenceStore.self) private var preferenceStore
-    private let repositoryUrl = URL(string: "https://github.com/0si43/PiecesOfPaper")
-    private let developerSiteUrl = URL(string: "https://www.shetommy.com/")
+    private let repositoryUrl = URL(string: "https://github.com/Kaedeeeeeeeeee/PromptNote")
+    private let foundationUrl = URL(string: "https://github.com/0si43/PiecesOfPaper")
 
     var body: some View {
         @Bindable var preferenceStore = preferenceStore
@@ -36,9 +36,9 @@ struct SettingView: View {
                     }
                 }
 
-                if let url = developerSiteUrl {
+                if let url = foundationUrl {
                     Link(destination: url) {
-                        Label("Developer Site", systemImage: "wrench")
+                        Label("Pieces of Paper Foundation", systemImage: "shippingbox")
                     }
                 }
             }

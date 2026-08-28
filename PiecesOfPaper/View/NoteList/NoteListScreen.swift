@@ -79,7 +79,7 @@ struct NoteListScreen: View {
                 case .localFallback, .error:
                     Text("OK")
                 }
-            } message: { alert in
+        } message: { alert in
                 switch alert {
                 case .iCloudDenied:
                     return Text("""

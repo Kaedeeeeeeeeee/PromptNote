@@ -436,7 +436,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = JDTR4Y333X;
+				DEVELOPMENT_TEAM = Y4FV6WUU4V;
 				INFOPLIST_FILE = PiecesOfPaperTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -444,7 +444,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = Individual.PiecesOfPaperTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.promptnote.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -457,7 +457,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = JDTR4Y333X;
+				DEVELOPMENT_TEAM = Y4FV6WUU4V;
 				INFOPLIST_FILE = PiecesOfPaperTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -465,7 +465,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = Individual.PiecesOfPaperTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.promptnote.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -597,7 +597,7 @@
 				CODE_SIGN_ENTITLEMENTS = PiecesOfPaper/PiecesOfPaper.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
-				DEVELOPMENT_TEAM = JDTR4Y333X;
+				DEVELOPMENT_TEAM = Y4FV6WUU4V;
 				INFOPLIST_FILE = PiecesOfPaper/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -605,7 +605,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 4.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Individual.LikeAPaper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.promptnote.app;
 				PRODUCT_NAME = "Pieces of Paper";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -623,7 +623,7 @@
 				CODE_SIGN_ENTITLEMENTS = PiecesOfPaper/PiecesOfPaper.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
-				DEVELOPMENT_TEAM = JDTR4Y333X;
+				DEVELOPMENT_TEAM = Y4FV6WUU4V;
 				INFOPLIST_FILE = PiecesOfPaper/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -631,7 +631,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 4.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Individual.LikeAPaper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.promptnote.app;
 				PRODUCT_NAME = "Pieces of Paper";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -646,7 +646,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
-				DEVELOPMENT_TEAM = JDTR4Y333X;
+				DEVELOPMENT_TEAM = Y4FV6WUU4V;
 				INFOPLIST_FILE = ThumbnailExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -655,7 +655,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 4.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Individual.LikeAPaper.ThumbnailExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.promptnote.app.ThumbnailExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -671,7 +671,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
-				DEVELOPMENT_TEAM = JDTR4Y333X;
+				DEVELOPMENT_TEAM = Y4FV6WUU4V;
 				INFOPLIST_FILE = ThumbnailExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -680,7 +680,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 4.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Individual.LikeAPaper.ThumbnailExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.promptnote.app.ThumbnailExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -696,7 +696,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
-				DEVELOPMENT_TEAM = JDTR4Y333X;
+				DEVELOPMENT_TEAM = Y4FV6WUU4V;
 				INFOPLIST_FILE = PreviewExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -705,7 +705,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 4.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Individual.LikeAPaper.PreviewExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.promptnote.app.PreviewExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -721,7 +721,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
-				DEVELOPMENT_TEAM = JDTR4Y333X;
+				DEVELOPMENT_TEAM = Y4FV6WUU4V;
 				INFOPLIST_FILE = PreviewExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -730,7 +730,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 4.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Individual.LikeAPaper.PreviewExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.promptnote.app.PreviewExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

@@ -34,8 +34,8 @@ UDID=<simulator udid>
 xcrun simctl boot $UDID
 xcrun simctl install $UDID "<DerivedData>/Build/Products/Debug-iphonesimulator/Pieces of Paper.app"
 # Local-storage mode: skip iCloud so all save/load paths hit the local Documents fallback
-xcrun simctl spawn $UDID defaults write Individual.LikeAPaper iCloud_disabled -bool YES
-xcrun simctl launch $UDID Individual.LikeAPaper
+xcrun simctl spawn $UDID defaults write com.promptnote.app iCloud_disabled -bool YES
+xcrun simctl launch $UDID com.promptnote.app
 ```
 
 The app launches straight into a fullscreen canvas (see "Simulator testing" in
@@ -61,13 +61,13 @@ installing (`defaults delete <domain> <key>`), and check the result against the 
 than with `defaults read`, for the reason below. Background: issue #302.
 
 The read side stays unreliable even after the app is gone. With the app terminated,
-`xcrun simctl spawn $UDID defaults read Individual.LikeAPaper last_seen_whats_new_version`
+`xcrun simctl spawn $UDID defaults read com.promptnote.app last_seen_whats_new_version`
 reported the pair as missing, while the app read the value back on its next launch — so a
 `defaults read` that finds nothing is not evidence that a write never happened. Assert
 persistence against the container:
 
 ```sh
-plutil -p "$(xcrun simctl get_app_container $UDID Individual.LikeAPaper data)/Library/Preferences/Individual.LikeAPaper.plist"
+plutil -p "$(xcrun simctl get_app_container $UDID com.promptnote.app data)/Library/Preferences/com.promptnote.app.plist"
 ```
 
 ## Operating and asserting
@@ -127,7 +127,7 @@ Assertions that need no screenshot diffing:
 - **Strokes**: `describe-all` lists each PencilKit stroke as an element with
   `AXLabel: "Pen, black"` and a `frame` matching where it was drawn.
 - **Persistence**: autosave writes the note into the app container —
-  `ls "$(xcrun simctl get_app_container $UDID Individual.LikeAPaper data)/Documents/InboxFolder/"`
+  `ls "$(xcrun simctl get_app_container $UDID com.promptnote.app data)/Documents/InboxFolder/"`
   shows a new timestamped `.plist` after drawing.
 
 Verified example: two swipes (`100 300 300 500`, `300 500 150 650`), then `describe-all`
@@ -140,7 +140,7 @@ List, tag, and share flows need existing notes; they can be seeded from macOS wi
 drawing anything. A macOS `swift` script that mirrors the app's formats — `NoteEntity`
 encoded with `PropertyListEncoder` into `Documents/InboxFolder/<timestamp>.pop`, and a
 `[TagEntity]` JSON array into `Documents/Library/taglist.json` — written into the app
-container (`xcrun simctl get_app_container $UDID Individual.LikeAPaper data`) appears in
+container (`xcrun simctl get_app_container $UDID com.promptnote.app data`) appears in
 the note list on the next launch, with tag strips rendered from the seeded `tagIds`.
 Keep the seeded drawing an empty `PKDrawing()` (see docs/GOTCHAS.md on PencilKit
 rendering off-device). Combined with the note-list stub below, this verified the tag
@@ -160,7 +160,7 @@ note list, which reads as a load failure rather than a missing seed.
 ## Opening a note file via URL (onOpenURL path)
 
 ```sh
-xcrun simctl openurl $UDID "file://$(xcrun simctl get_app_container $UDID Individual.LikeAPaper data)/Documents/InboxFolder/<note>.pop"
+xcrun simctl openurl $UDID "file://$(xcrun simctl get_app_container $UDID com.promptnote.app data)/Documents/InboxFolder/<note>.pop"
 ```
 
 delivers the file URL to the app's `onOpenURL` handler — both while the app is running
@@ -208,7 +208,7 @@ way, with no gesture injection.
   `grep -rla "<message>" "$ROOT/System/Library"` placed `couldn't fetch remote operation IDs` in
   FileProvider, `sendUserActivityToServer` in UserActivity and `Reading from public effective user
   settings` in ManagedConfiguration, none of which the app calls: the app's own lines all carry an
-  `os.Logger` category under the `Individual.LikeAPaper` subsystem. Prove the sweep against a string
+  `os.Logger` category under the `com.promptnote.app` subsystem. Prove the sweep against a string
   known to be present first (`UIPencilOnlyDrawWithPencilKey` in UIKitCore) — zero hits cannot tell
   "not there" from "the search is broken".
 - **The first gesture after opening a menu is spent dismissing it**: a `ui swipe` delivered while

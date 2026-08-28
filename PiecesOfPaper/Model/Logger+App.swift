@@ -3,7 +3,7 @@ import os
 extension Logger {
     // Hardcoded rather than Bundle.main.bundleIdentifier: this file is compiled
     // into the app target only, and a constant keeps the Console filter greppable
-    private static let subsystem = "Individual.LikeAPaper"
+    private static let subsystem = "com.promptnote.app"
 
     static let tagRepository = Logger(subsystem: subsystem, category: "TagRepository")
     static let noteMetadataCache = Logger(subsystem: subsystem, category: "NoteMetadataCache")

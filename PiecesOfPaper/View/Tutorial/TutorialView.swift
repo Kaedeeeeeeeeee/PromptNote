@@ -25,7 +25,7 @@ struct TutorialView: View {
     private var basics: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Basics", systemImage: "pencil.tip.crop.circle")
-            Bullet("Pieces of Paper is designed specifically for iPad and Apple Pencil")
+            Bullet("PromptNote is designed specifically for iPad and Apple Pencil")
             Bullet("The iOS app exists but offers limited practical value")
             Bullet("""
             When you launch the app, a blank white canvas fills the screen with the drawing tools \
@@ -105,13 +105,13 @@ struct TutorialView: View {
                 question: "Is this app free?",
                 answer: """
                 Yes, it's **free**. In fact, all the source code is \
-                [publicly available](https://github.com/0si43/PiecesOfPaper).
+                [publicly available](https://github.com/Kaedeeeeeeeeee/PromptNote).
                 """
             )
             FAQItem(
                 question: "Where should I report bugs?",
                 answer: """
-                Please open an issue in the [GitHub repository](https://github.com/0si43/PiecesOfPaper). \
+                Please open an issue in the [GitHub repository](https://github.com/Kaedeeeeeeeeee/PromptNote). \
                 However, I cannot promise to fix every issue (this is a free app!). \
                 If you're a developer, I'd be delighted to receive your pull requests!😁
                 """
@@ -122,8 +122,8 @@ struct TutorialView: View {
                 This is terrible!
                 """,
                 answer: """
-                Sorry for the inconvenience. Please note that Pieces of Paper is developed by \
-                an individual developer and offered as a free app.
+                Sorry for the inconvenience. Please note that PromptNote is under active development \
+                and is based on the open-source Pieces of Paper project.
 
                 While I'm confident in the app's usability, I cannot guarantee 100% stability. \
                 For important documents, I cannot take responsibility for any data loss. \
