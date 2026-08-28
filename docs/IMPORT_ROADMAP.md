@@ -7,7 +7,9 @@
 - Current document format: one property-list encoded `PKDrawing` per `.pop` file
 - Target platforms: iPadOS first, with iPhone and macOS behavior defined where practical
 - Minimum deployment target: iPadOS 18 for the initial implementation
-- Phase 0 identity proposal awaiting owner confirmation: Team `Y4FV6WUU4V`, app bundle ID `com.promptnote.app`, and iCloud container `iCloud.com.promptnote.app`
+- Phase 0 identity selected and committed: Team `Y4FV6WUU4V`, app bundle ID `com.promptnote.app`, and iCloud container `iCloud.com.promptnote.app`
+- Remaining Phase 0 external gate: register the three explicit App IDs and iCloud container after the team account is added to Xcode, then repeat the signed physical-device build
+- Phase 1 package core implemented: versioned manifest, lazy per-page drawings, bounded validation, copy-on-write saves, and shared Quick Look reader
 
 ## Goal
 
@@ -47,12 +49,12 @@ Example.promptnote/
   manifest.plist
   pages/
     <page-id>/
-      drawing.data
+      drawings/
+        <drawing-revision-id>.data
       preview.png
   attachments/
     <attachment-id>/
-      original.pdf
-      metadata.plist
+      <original-filename>
   thumbnails/
     document.png
 ```
@@ -62,16 +64,16 @@ The manifest is versioned and contains:
 - Stable document, page, and attachment UUIDs
 - Document title and tag IDs
 - Creation and modification dates
-- Schema and drawing-format versions
+- Schema, drawing-format, and coordinate-transform versions
 - Page order, dimensions, and layout mode (`freeform` or `paged`)
-- A page background reference: blank, image, or PDF page index
-- Drawing and attachment relative paths
-- Original filename and Uniform Type Identifier
+- A page background reference: blank, image, or PDF page index, crop box, and rotation
+- Drawing revision, preview revision, and attachment relative paths
+- Original filename, Uniform Type Identifier, byte count, checksum, and PDF page count
 - Optional extracted-text status and provenance
 
 PDF pages should reference one preserved PDF attachment plus a page index. They should not duplicate the original PDF page into every page directory.
 
-Drawing files use `PKDrawing.dataRepresentation()` and are required source data. Missing previews and thumbnails are regenerated. Extracted text, OCR output, and embeddings live in a per-device rebuildable index keyed by attachment checksum rather than in the synced document package. Readers reject an unsupported future major manifest version, ignore unknown optional fields from a compatible minor version, and never silently replace a missing drawing.
+Drawing files use `PKDrawing.dataRepresentation()` and are required source data. Saving creates a new drawing revision and atomically switches the manifest reference, making a failed manifest write recoverable without rewriting attachments. Missing previews and thumbnails are regenerated. Extracted text, OCR output, and embeddings live in a per-device rebuildable index keyed by attachment checksum rather than in the synced document package. Readers reject an unsupported future major manifest version, tolerate unknown optional fields from a compatible minor version, open future minor versions read-only, and never silently replace a missing drawing.
 
 ### Legacy migration
 
@@ -227,5 +229,4 @@ No imported user content is sent to an external service in Phases 0–6. Any Pha
 
 ## Open Decisions
 
-1. Confirm or replace the proposed Team `Y4FV6WUU4V`, bundle ID `com.promptnote.app`, extension IDs under that prefix, and iCloud container `iCloud.com.promptnote.app`.
-2. Whether any server-side Office-to-PDF conversion is acceptable under the product privacy model.
+1. Whether any server-side Office-to-PDF conversion is acceptable under the product privacy model.

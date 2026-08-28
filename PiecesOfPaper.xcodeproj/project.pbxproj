@@ -72,6 +72,12 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Model/NoteEntity.swift,
+				Model/NoteFileFormat.swift,
+				Model/PromptNoteDrawingStore.swift,
+				Model/PromptNoteFileChecksum.swift,
+				Model/PromptNoteManifest.swift,
+				Model/PromptNotePackageError.swift,
+				Model/PromptNotePackageReader.swift,
 				Model/TagEntity.swift,
 			);
 			target = A7000000000000000000005E /* ThumbnailExtension */;
@@ -80,6 +86,12 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Model/NoteEntity.swift,
+				Model/NoteFileFormat.swift,
+				Model/PromptNoteDrawingStore.swift,
+				Model/PromptNoteFileChecksum.swift,
+				Model/PromptNoteManifest.swift,
+				Model/PromptNotePackageError.swift,
+				Model/PromptNotePackageReader.swift,
 				Model/TagEntity.swift,
 			);
 			target = A70000000000000000000070 /* PreviewExtension */;

@@ -10,6 +10,18 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
+			<string>PromptNote Note</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.promptnote.note</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
 			<string>Pieces of Paper Note</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
@@ -84,6 +96,24 @@
 	</array>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>com.apple.package</string>
+				<string>public.content</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>PromptNote Note</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.promptnote.note</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>promptnote</string>
+				</array>
+			</dict>
+		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
 			<array>
