@@ -127,4 +127,55 @@ struct PromptNotePackageSaveTests {
             Issue.record("unexpected error: \(error)")
         }
     }
+
+    @Test @MainActor func pdfEditor_flushesNewestDrawingForPage() async throws {
+        let directory = try PromptNotePackageTestSupport.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let packageURL = directory.appendingPathComponent("Editor.promptnote")
+        let repository = PromptNotePackageRepository()
+        let descriptor = try await repository.createBlank(at: packageURL)
+        let pageID = try #require(descriptor.manifest.pages.first?.id)
+        var saveNotifications = 0
+        let editor = PromptNotePDFEditor(
+            descriptor: descriptor,
+            repository: repository,
+            didSave: { _ in saveNotifications += 1 }
+        )
+        _ = try await editor.drawing(for: pageID)
+        editor.record(PKDrawing.stub(points: 3), for: pageID, autoSave: false)
+        let newestDrawing = PKDrawing.stub(points: 11)
+        editor.record(newestDrawing, for: pageID, autoSave: false)
+
+        let didFlush = await editor.flush()
+
+        #expect(didFlush)
+        #expect(saveNotifications == 1)
+        #expect(try await repository.loadDrawing(pageID: pageID, from: packageURL) == newestDrawing)
+    }
+
+    @Test @MainActor func pdfEditor_doesNotSaveUnchangedDrawing() async throws {
+        let directory = try PromptNotePackageTestSupport.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let packageURL = directory.appendingPathComponent("Unchanged.promptnote")
+        let repository = PromptNotePackageRepository()
+        let initialDrawing = PKDrawing.stub(points: 4)
+        let descriptor = try await repository.createBlank(
+            at: packageURL,
+            drawing: initialDrawing
+        )
+        let pageID = try #require(descriptor.manifest.pages.first?.id)
+        var saveNotifications = 0
+        let editor = PromptNotePDFEditor(
+            descriptor: descriptor,
+            repository: repository,
+            didSave: { _ in saveNotifications += 1 }
+        )
+        let loadedDrawing = try await editor.drawing(for: pageID)
+        editor.record(loadedDrawing, for: pageID, autoSave: false)
+
+        let didFlush = await editor.flush()
+
+        #expect(didFlush)
+        #expect(saveNotifications == 0)
+    }
 }

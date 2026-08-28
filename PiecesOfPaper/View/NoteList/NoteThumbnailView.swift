@@ -26,14 +26,20 @@ struct NoteThumbnailView: View {
 
     var body: some View {
         Button(action: openDocument, label: {
-            ZStack(alignment: .bottomLeading) {
+            ZStack {
                 if let thumbnail {
                     Image(uiImage: thumbnail)
                         .resizable()
                         .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 } else {
                     Color.clear
                 }
+            }
+            .frame(width: 250, height: 190)
+            .background(Color(UIColor.secondarySystemBackground))
+            .shadow(radius: 5)
+            .overlay(alignment: .bottomLeading) {
                 if NoteFileFormat.detect(from: entry.fileURL) == .package {
                     Label(packageTitle ?? "PDF", systemImage: "doc.richtext")
                         .font(.caption.weight(.semibold))
@@ -44,9 +50,6 @@ struct NoteThumbnailView: View {
                         .padding(10)
                 }
             }
-            .frame(width: 250, height: 190)
-            .background(Color(UIColor.secondarySystemBackground))
-            .shadow(radius: 5)
             .overlay {
                 if isOpening {
                     ProgressView()

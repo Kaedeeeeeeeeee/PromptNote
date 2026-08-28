@@ -69,6 +69,21 @@ extension NoteStore {
         openedPackage = descriptor
     }
 
+    func recordSavedPackage(_ descriptor: PromptNotePackageDescriptor) {
+        let packageURL = descriptor.fileURL
+        let attributes = noteRepository.fileAttributes(at: packageURL)
+        let entry = NoteIndexEntry(
+            fileURL: packageURL,
+            creationDate: attributes?.creationDate ?? descriptor.manifest.createdDate,
+            contentModificationDate: attributes?.contentModificationDate ?? descriptor.manifest.updatedDate
+        )
+        let directory: NoteDirectory = archivedIndex.contains(where: { $0.fileURL == packageURL })
+            ? .archived
+            : .inbox
+        upsertEntry(entry, in: directory)
+        recordPackageMetadata(descriptor, entry: entry)
+    }
+
     private func recordPackageMetadata(_ descriptor: PromptNotePackageDescriptor,
                                        entry: NoteIndexEntry) {
         metadataByFileName[entry.fileName] = NoteMetadata(
