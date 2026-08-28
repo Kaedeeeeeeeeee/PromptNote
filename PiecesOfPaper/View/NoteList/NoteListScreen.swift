@@ -67,6 +67,12 @@ struct NoteListScreen: View {
         .sheet(item: $presentation.noteToTag) { note in
             AddTagView(note: note)
         }
+        .sheet(item: $presentation.destination) { destination in
+            switch destination {
+            case .createDocument:
+                DocumentCreationSheet()
+            }
+        }
         .alert("",
                isPresented: $presentation.isAlertPresented,
                presenting: presentation.alert) { alert in
@@ -134,11 +140,17 @@ struct NoteListScreen: View {
     // pull-to-refresh gesture inside a scrollable container
     private var emptyStateView: some View {
         ScrollView {
-            ContentUnavailableView(
-                "No Notes",
-                systemImage: "note.text",
-                description: Text("Pull down to refresh.")
-            )
+            Group {
+                if isTargetDirectoryArchived {
+                    ContentUnavailableView(
+                        "Trash is Empty",
+                        systemImage: "trash",
+                        description: Text("Notes moved to Trash appear here.")
+                    )
+                } else {
+                    NewDocumentButton(style: .emptyState)
+                }
+            }
             .containerRelativeFrame(.vertical)
         }
     }

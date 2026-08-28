@@ -37,6 +37,20 @@ struct NoteStoreCanvasPresentationTests {
         #expect(noteStore.openedNote == note)
     }
 
+    @Test func test_openBlankNoteIfIdle_skipsWhenPDFPackageAlreadyOpen() async throws {
+        let directory = try PromptNotePackageTestSupport.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let descriptor = try await PromptNotePackageRepository().createBlank(
+            at: directory.appendingPathComponent("Open.promptnote")
+        )
+        noteStore.openPackage(descriptor)
+
+        noteStore.openBlankNoteIfIdle()
+
+        #expect(noteStore.openedNote == nil)
+        #expect(noteStore.openedPackage == descriptor)
+    }
+
     @Test func test_handleIncomingURL_ignoresNonPopExtension() {
         noteStore.handleIncomingURL(URL(fileURLWithPath: "/external/legacy.plist"))
         #expect(noteStore.externalOpenTask == nil)

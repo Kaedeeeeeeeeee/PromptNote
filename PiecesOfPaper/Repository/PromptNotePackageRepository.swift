@@ -4,8 +4,13 @@ import PencilKit
 struct PromptNotePackageRepository {
     typealias DataWriter = (Data, URL) throws -> Void
 
-    private let fileManager: FileManager
-    private let limits: PromptNotePackageLimits
+    struct AttachmentSource {
+        let sourceURL: URL
+        let relativePath: String
+    }
+
+    let fileManager: FileManager
+    let limits: PromptNotePackageLimits
     private let manifestWriter: DataWriter
     private let drawingWriter: DataWriter
 
@@ -63,6 +68,7 @@ struct PromptNotePackageRepository {
         return try await create(
             manifest: manifest,
             drawings: [pageID: drawing],
+            attachmentSources: [],
             at: packageURL
         )
     }
@@ -136,9 +142,10 @@ struct PromptNotePackageRepository {
         }
     }
 
-    private func create(manifest: PromptNoteManifest,
-                        drawings: [UUID: PKDrawing],
-                        at packageURL: URL) async throws -> PromptNotePackageDescriptor {
+    func create(manifest: PromptNoteManifest,
+                drawings: [UUID: PKDrawing],
+                attachmentSources: [AttachmentSource],
+                at packageURL: URL) async throws -> PromptNotePackageDescriptor {
         try manifest.validate()
         guard !fileManager.fileExists(atPath: packageURL.path) else {
             throw PromptNotePackageError.destinationAlreadyExists(packageURL.path)
@@ -157,7 +164,12 @@ struct PromptNotePackageRepository {
         }
 
         try fileManager.createDirectory(at: stagingURL, withIntermediateDirectories: false)
-        try writePackageContents(manifest: manifest, drawings: drawings, to: stagingURL)
+        try writePackageContents(
+            manifest: manifest,
+            drawings: drawings,
+            attachmentSources: attachmentSources,
+            to: stagingURL
+        )
         let stagedDescriptor = try PromptNotePackageReader.loadManifest(
             from: stagingURL,
             fileManager: fileManager,
@@ -176,6 +188,7 @@ struct PromptNotePackageRepository {
 
     private func writePackageContents(manifest: PromptNoteManifest,
                                       drawings: [UUID: PKDrawing],
+                                      attachmentSources: [AttachmentSource],
                                       to packageURL: URL) throws {
         for page in manifest.pages {
             guard let drawing = drawings[page.id] else {
@@ -195,6 +208,18 @@ struct PromptNotePackageRepository {
                 withIntermediateDirectories: true
             )
             try drawingWriter(drawingData, drawingURL)
+        }
+        for attachment in attachmentSources {
+            let destinationURL = try PromptNotePackageReader.containedURL(
+                for: attachment.relativePath,
+                in: packageURL,
+                fileManager: fileManager
+            )
+            try fileManager.createDirectory(
+                at: destinationURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try fileManager.copyItem(at: attachment.sourceURL, to: destinationURL)
         }
         try write(manifest, to: packageURL)
     }

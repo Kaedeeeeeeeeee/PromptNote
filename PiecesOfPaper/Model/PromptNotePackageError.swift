@@ -2,6 +2,7 @@ import Foundation
 
 enum PromptNotePackageError: LocalizedError {
     case invalidPackageExtension(String)
+    case invalidPDF(String)
     case destinationAlreadyExists(String)
     case packageNotFound(String)
     case manifestMissing
@@ -27,6 +28,8 @@ enum PromptNotePackageError: LocalizedError {
         switch self {
         case .invalidPackageExtension(let path):
             "The document package must use the .promptnote extension: \(path)"
+        case .invalidPDF(let reason):
+            "The PDF cannot be imported: \(reason)"
         case .destinationAlreadyExists(let path):
             "A document already exists at \(path)."
         case .packageNotFound(let path):

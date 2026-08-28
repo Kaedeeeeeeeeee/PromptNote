@@ -5,12 +5,15 @@ struct NoteGridView: View {
     @Environment(NoteStore.self) private var noteStore
     @Environment(TagStore.self) private var tagStore
     @Environment(NoteListPresentation.self) private var presentation
-    private let gridItem = GridItem(.adaptive(minimum: 250), spacing: 50.0)
+    private let gridItem = GridItem(.adaptive(minimum: 250), spacing: 50.0, alignment: .top)
 
     var body: some View {
         ScrollView {
             Spacer(minLength: 30.0)
             LazyVGrid(columns: [gridItem]) {
+                if directory == .inbox {
+                    NewDocumentButton(style: .gridTile)
+                }
                 ForEach(noteStore.displayEntries(for: directory)) { entry in
                     let tags = tagStore.tags(ids: noteStore.tagIds(for: entry))
                     VStack {
@@ -22,6 +25,7 @@ struct NoteGridView: View {
                             .frame(width: 250, height: 40)
                             .contentShape(Rectangle())
                             .onTapGesture {
+                                guard NoteFileFormat.detect(from: entry.fileURL) != .package else { return }
                                 presentation.requestTag(entry, from: noteStore)
                             }
                             .padding(.horizontal)
@@ -34,10 +38,12 @@ struct NoteGridView: View {
 
     private func contextMenu(entry: NoteIndexEntry) -> some View {
         Group {
-            Button {
-                perform { try await noteStore.duplicate(entry, in: directory) }
-            } label: {
-                Label("Duplicate", systemImage: "doc.on.doc")
+            if NoteFileFormat.detect(from: entry.fileURL) != .package {
+                Button {
+                    perform { try await noteStore.duplicate(entry, in: directory) }
+                } label: {
+                    Label("Duplicate", systemImage: "doc.on.doc")
+                }
             }
             if entry.isArchived {
                 Button {
@@ -57,15 +63,17 @@ struct NoteGridView: View {
                     Label("Move to Trash", systemImage: "trash")
                 }
             }
-            Button {
-                presentation.requestShare(entry, from: noteStore)
-            } label: {
-                Label("Share", systemImage: "square.and.arrow.up")
-            }
-            Button {
-                presentation.requestTag(entry, from: noteStore)
-            } label: {
-                Label("Tag", systemImage: "tag")
+            if NoteFileFormat.detect(from: entry.fileURL) != .package {
+                Button {
+                    presentation.requestShare(entry, from: noteStore)
+                } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                Button {
+                    presentation.requestTag(entry, from: noteStore)
+                } label: {
+                    Label("Tag", systemImage: "tag")
+                }
             }
         }
     }

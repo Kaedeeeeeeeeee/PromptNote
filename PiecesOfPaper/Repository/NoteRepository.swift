@@ -85,6 +85,7 @@ final class NoteRepository: NoteRepositoryProtocol {
         fileNames = fileNames.filter {
             $0.hasSuffix("." + FilePath.noteFileExtension)
                 || $0.hasSuffix("." + FilePath.legacyNoteFileExtension)
+                || $0.hasSuffix("." + FilePath.packageFileExtension)
         }
         return fileNames.map { directoryUrl.appendingPathComponent($0) }
     }

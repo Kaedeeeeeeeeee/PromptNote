@@ -44,6 +44,19 @@ struct NoteRepositoryTests {
         #expect(attribute.creationDate != nil)
     }
 
+    @Test func localFileAttributes_includesPromptNotePackages() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let packageURL = directory.appendingPathComponent("Imported.promptnote")
+        let ignoredURL = directory.appendingPathComponent("source.pdf")
+        try FileManager.default.createDirectory(at: packageURL, withIntermediateDirectories: false)
+        try Data().write(to: ignoredURL)
+
+        let attributes = NoteRepository().localFileAttributes(in: directory)
+
+        #expect(attributes.map(\.fileURL.path) == [packageURL.path])
+    }
+
     @Test func open_readsSavedEntity() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

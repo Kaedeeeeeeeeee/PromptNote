@@ -20,6 +20,10 @@ final class ThumbnailCache {
         cache.object(forKey: key as NSString)
     }
 
+    func insert(_ image: UIImage, key: String) {
+        cache.setObject(image, forKey: key as NSString)
+    }
+
     func thumbnail(for drawing: PKDrawing, key: String, style: UIUserInterfaceStyle) async -> UIImage {
         if let cached = cached(key: key) {
             return cached

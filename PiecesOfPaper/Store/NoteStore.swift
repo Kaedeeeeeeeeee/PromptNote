@@ -27,6 +27,10 @@ final class NoteStore {
     /// Single source of truth for canvas presentation: new notes, thumbnail
     /// taps, and external opens all present by assigning this
     var openedNote: NoteData?
+    /// PDF-backed v2 packages use their own reader while the legacy canvas
+    /// remains unchanged. Only one of these two presentation values is set at
+    /// a time by the creation/opening flows.
+    var openedPackage: PromptNotePackageDescriptor?
     private(set) var isHandlingExternalOpen = false
     private(set) var externalOpenTask: Task<Void, Never>?
     private var securityScopedUrl: URL?
@@ -47,6 +51,7 @@ final class NoteStore {
     // MARK: - Dependencies
     // Read here and by NoteStore+DataOperations
     let noteRepository: NoteRepositoryProtocol
+    let packageRepository: PromptNotePackageRepository
     private let preferenceRepository: PreferenceRepositoryProtocol
     let metadataCacheRepository: NoteMetadataCacheRepositoryProtocol
     /// Receives tags embedded in a legacy note; wired by RootSplitView so the
@@ -78,9 +83,11 @@ final class NoteStore {
     var persistTask: Task<Void, Never>?
 
     init(noteRepository: NoteRepositoryProtocol = NoteRepository(),
+         packageRepository: PromptNotePackageRepository = PromptNotePackageRepository(),
          preferenceRepository: PreferenceRepositoryProtocol = PreferenceRepository(),
          metadataCacheRepository: NoteMetadataCacheRepositoryProtocol = NoteMetadataCacheRepository()) {
         self.noteRepository = noteRepository
+        self.packageRepository = packageRepository
         self.preferenceRepository = preferenceRepository
         self.metadataCacheRepository = metadataCacheRepository
         self.inboxListOrder = preferenceRepository.getListOrder(directoryName: NoteDirectory.inbox.rawValue)
@@ -214,6 +221,7 @@ final class NoteStore {
 
 extension NoteStore {
     func openNewNote() {
+        openedPackage = nil
         guard let url = FilePath.inboxUrl?.appendingPathComponent(FilePath.fileName) else { return }
         openedNote = NoteData(entity: NoteEntity(drawing: PKDrawing()), fileURL: url)
     }
@@ -221,7 +229,7 @@ extension NoteStore {
     /// scenePhase .active hook: never stomp an already-open note or an
     /// in-flight external open
     func openBlankNoteIfIdle() {
-        guard openedNote == nil, !isHandlingExternalOpen else { return }
+        guard openedNote == nil, openedPackage == nil, !isHandlingExternalOpen else { return }
         openNewNote()
     }
 

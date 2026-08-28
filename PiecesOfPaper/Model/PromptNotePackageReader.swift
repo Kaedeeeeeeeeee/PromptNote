@@ -12,9 +12,11 @@ struct PromptNotePackageLimits: Equatable {
     static let standard = PromptNotePackageLimits()
 }
 
-struct PromptNotePackageDescriptor: Equatable {
+struct PromptNotePackageDescriptor: Equatable, Identifiable {
     let fileURL: URL
     var manifest: PromptNoteManifest
+
+    var id: URL { fileURL }
 }
 
 enum PromptNotePackageReader {

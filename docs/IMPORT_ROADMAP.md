@@ -11,6 +11,8 @@
 - Phase 0 development signing verified: Xcode registered the app ID and iCloud container, signed both extensions with the team development profile, then installed and launched PromptNote on the paired iPad
 - Remaining distribution gate: register explicit App IDs for the two Quick Look extensions before the first App Store export; development builds currently use the team wildcard profile for them
 - Phase 1 package core implemented: versioned manifest, lazy per-page drawings, bounded validation, copy-on-write saves, and shared Quick Look reader
+- Phase 2 in-app PDF slice implemented: the note grid exposes a same-size New Document tile, its sheet offers a blank note or Files import, and selected PDFs are preserved in a `.promptnote` package, listed with a first-page thumbnail, and opened in a vertical PDF reader
+- Remaining PDF work: editable per-page PencilKit overlays, flattened annotated export, text indexing, and the large-file performance gates; image and Word selection stay hidden until their import paths are real
 
 ## Goal
 

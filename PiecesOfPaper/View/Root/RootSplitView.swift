@@ -58,6 +58,10 @@ struct RootSplitView: View {
             // what swaps the drawing when openedNote is replaced mid-cover
             .id(note.id)
         }
+        .fullScreenCover(item: $noteStore.openedPackage) { descriptor in
+            PromptNotePDFView(descriptor: descriptor)
+                .id(descriptor.id)
+        }
         .onAppear {
             noteStore.onLegacyTagsDecoded = { tagStore.restoreIfEmpty($0) }
             FilePath.startObservingUbiquityChanges {

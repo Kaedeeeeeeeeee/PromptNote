@@ -72,4 +72,9 @@ struct NoteListPresentationTests {
         presentation.isAlertPresented = false
         #expect(presentation.alert == nil)
     }
+
+    @Test func test_requestDocumentCreation_presentsCreationDestination() {
+        presentation.requestDocumentCreation()
+        #expect(presentation.destination == .createDocument)
+    }
 }

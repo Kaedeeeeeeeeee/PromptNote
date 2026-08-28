@@ -1,6 +1,7 @@
 import Foundation
 import PencilKit
 import Testing
+import UIKit
 @testable import Pieces_of_Paper
 
 struct PromptNotePackageCreationTests {
@@ -86,6 +87,53 @@ struct PromptNotePackageCreationTests {
         #expect(outcomes.filter { $0 }.count == 1)
         let descriptor = try await repository.loadManifest(from: packageURL)
         #expect(["First", "Second"].contains(descriptor.manifest.title))
+    }
+
+    @Test func createPDF_preservesOriginalAndBuildsOnePageRecordPerPDFPage() async throws {
+        let directory = try PromptNotePackageTestSupport.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sourceURL = directory.appendingPathComponent("Meeting Notes.pdf")
+        let packageURL = directory.appendingPathComponent("Imported.promptnote")
+        let sourceData = makePDFData()
+        try sourceData.write(to: sourceURL)
+        let repository = PromptNotePackageRepository()
+
+        let descriptor = try await repository.createPDF(from: sourceURL, at: packageURL)
+
+        #expect(descriptor.manifest.title == "Meeting Notes")
+        #expect(descriptor.manifest.layoutMode == .paged)
+        #expect(descriptor.manifest.pages.count == 2)
+        let attachment = try #require(descriptor.manifest.attachments.first)
+        #expect(attachment.originalFilename == "Meeting Notes.pdf")
+        #expect(attachment.contentTypeIdentifier == "com.adobe.pdf")
+        #expect(attachment.pageCount == 2)
+        #expect(attachment.byteCount == Int64(sourceData.count))
+        let importedURL = try PromptNotePackageReader.attachmentURL(
+            attachmentID: attachment.id,
+            in: descriptor
+        )
+        #expect(try Data(contentsOf: importedURL) == sourceData)
+        #expect(descriptor.manifest.pages[0].size == PromptNotePageSize(width: 612, height: 792))
+        #expect(descriptor.manifest.pages[1].size == PromptNotePageSize(width: 792, height: 612))
+        for page in descriptor.manifest.pages {
+            #expect(page.background.kind == .pdf)
+            #expect(page.background.attachmentID == attachment.id)
+            let drawing = try await repository.loadDrawing(pageID: page.id, from: packageURL)
+            #expect(drawing.strokes.isEmpty)
+        }
+    }
+
+    private func makePDFData() -> Data {
+        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 612, height: 792))
+        return renderer.pdfData { context in
+            context.beginPage()
+            "First page".draw(at: CGPoint(x: 40, y: 40), withAttributes: nil)
+            context.beginPage(
+                withBounds: CGRect(x: 0, y: 0, width: 792, height: 612),
+                pageInfo: [:]
+            )
+            "Second page".draw(at: CGPoint(x: 40, y: 40), withAttributes: nil)
+        }
     }
 
     private func attemptCreate(repository: PromptNotePackageRepository,

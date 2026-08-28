@@ -5,6 +5,12 @@ import Foundation
 @Observable
 @MainActor
 final class NoteListPresentation {
+    enum Destination: String, Identifiable {
+        case createDocument
+
+        var id: Self { self }
+    }
+
     enum Alert {
         case iCloudDenied
         case iCloudDriveDisabled
@@ -16,6 +22,7 @@ final class NoteListPresentation {
     var alert: Alert?
     var noteToShare: NoteData?
     var noteToTag: NoteData?
+    var destination: Destination?
 
     /// `alert` is the single source of truth; `.alert(isPresented:presenting:)`
     /// needs a Bool binding, and a second stored flag could disagree with it
@@ -26,6 +33,10 @@ final class NoteListPresentation {
 
     func presentOpenFailure(_ error: Error) {
         alert = .error(NoteStoreError.openFailure(from: error, count: 1))
+    }
+
+    func requestDocumentCreation() {
+        destination = .createDocument
     }
 
     // Open-then-present: both sheets take a loaded NoteData, so the document

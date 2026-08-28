@@ -88,6 +88,7 @@ enum FilePath {
 
     static let noteFileExtension = "pop"
     static let legacyNoteFileExtension = "plist"
+    static let packageFileExtension = "promptnote"
 
     // Shared by generation and parsing so historical filenames written with the
     // device's default locale/calendar stay parseable by the same configuration.
@@ -99,6 +100,11 @@ enum FilePath {
 
     static var fileName: String {
         fileNameTimestampFormatter.string(from: Date()) + "." + noteFileExtension
+    }
+
+    static var packageFileName: String {
+        fileNameTimestampFormatter.string(from: Date()) + "-" + UUID().uuidString.lowercased()
+            + "." + packageFileExtension
     }
 
     static func parseTimestamp(fromFileName name: String) -> Date? {
