@@ -24,6 +24,8 @@ The first major PromptNote work will add:
 - A versioned document package for pages and attachments
 - AI-assisted search, understanding, and editing workflows
 
+See [Common File Import Roadmap](docs/IMPORT_ROADMAP.md) for the staged architecture and acceptance criteria.
+
 ## License and attribution
 
 The Pieces of Paper foundation is available under the MIT License. Its original copyright and license notice are preserved in [LICENSE.md](LICENSE.md).
