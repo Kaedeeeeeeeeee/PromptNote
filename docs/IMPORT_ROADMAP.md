@@ -7,8 +7,9 @@
 - Current document format: one property-list encoded `PKDrawing` per `.pop` file
 - Target platforms: iPadOS first, with iPhone and macOS behavior defined where practical
 - Minimum deployment target: iPadOS 18 for the initial implementation
-- Phase 0 identity selected and committed: Team `Y4FV6WUU4V`, app bundle ID `com.promptnote.app`, and iCloud container `iCloud.com.promptnote.app`
-- Remaining Phase 0 external gate: register the three explicit App IDs and iCloud container after the team account is added to Xcode, then repeat the signed physical-device build
+- Phase 0 identity selected: Team `Y4FV6WUU4V`, app bundle ID `com.shera.promptnote`, and iCloud container `iCloud.com.shera.promptnote`
+- Phase 0 development signing verified: Xcode registered the app ID and iCloud container, signed both extensions with the team development profile, then installed and launched PromptNote on the paired iPad
+- Remaining distribution gate: register explicit App IDs for the two Quick Look extensions before the first App Store export; development builds currently use the team wildcard profile for them
 - Phase 1 package core implemented: versioned manifest, lazy per-page drawings, bounded validation, copy-on-write saves, and shared Quick Look reader
 
 ## Goal

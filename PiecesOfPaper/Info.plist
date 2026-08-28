@@ -55,7 +55,7 @@
 	<string>Save your drawing in your photo library</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
-		<key>iCloud.com.promptnote.app</key>
+		<key>iCloud.com.shera.promptnote</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>

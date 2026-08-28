@@ -4,6 +4,7 @@ import Testing
 
 struct NoteFileFormatRegistrationTests {
     @Test func appBundleRegistersPromptNoteAsDocumentPackage() throws {
+        #expect(Bundle.main.bundleIdentifier == "com.shera.promptnote")
         let info = try #require(Bundle.main.infoDictionary)
         let declarations = try #require(
             info["UTExportedTypeDeclarations"] as? [[String: Any]]
