@@ -112,10 +112,22 @@ struct DocumentCreationSheet: View {
         switch result {
         case .success(let urls):
             guard let sourceURL = urls.first else { return }
+            // A document provider may revoke or remove its temporary URL as
+            // soon as this callback returns. Acquire the scope synchronously
+            // and keep it alive until the import has made an app-owned copy.
+            let hasSecurityScope = sourceURL.startAccessingSecurityScopedResource()
             isImporting = true
             Task {
+                defer {
+                    if hasSecurityScope {
+                        sourceURL.stopAccessingSecurityScopedResource()
+                    }
+                }
                 do {
-                    let descriptor = try await noteStore.importPDF(from: sourceURL)
+                    let descriptor = try await noteStore.importPDF(
+                        from: sourceURL,
+                        securityScopeIsActive: hasSecurityScope
+                    )
                     noteStore.openPackage(descriptor)
                     dismiss()
                 } catch {

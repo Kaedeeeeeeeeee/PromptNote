@@ -11,7 +11,8 @@ extension NoteStore {
         }
     }
 
-    func importPDF(from sourceURL: URL) async throws -> PromptNotePackageDescriptor {
+    func importPDF(from sourceURL: URL,
+                   securityScopeIsActive: Bool = false) async throws -> PromptNotePackageDescriptor {
         guard let directoryURL = NoteDirectory.inbox.url else {
             throw NoteRepositoryError.directoryNotAvailable
         }
@@ -22,10 +23,34 @@ extension NoteStore {
             FilePath.packageFileName,
             isDirectory: true
         )
-        let scopedURL = sourceURL.startAccessingSecurityScopedResource() ? sourceURL : nil
-        defer { scopedURL?.stopAccessingSecurityScopedResource() }
+        let ownsSecurityScope = !securityScopeIsActive
+            && sourceURL.startAccessingSecurityScopedResource()
+        defer {
+            if ownsSecurityScope {
+                sourceURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        // Work from an app-owned copy. Files providers are allowed to vend
+        // coordinated, short-lived URLs, and PDFKit performs several reads
+        // while inspecting the document and building its package.
+        let stagingDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PromptNoteImport-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: stagingDirectoryURL,
+            withIntermediateDirectories: false
+        )
+        defer { try? FileManager.default.removeItem(at: stagingDirectoryURL) }
+        let stagedURL = stagingDirectoryURL.appendingPathComponent(
+            sourceURL.lastPathComponent,
+            isDirectory: false
+        )
+        try await CoordinatedFileAccess.read(at: sourceURL) { coordinatedURL in
+            try FileManager.default.copyItem(at: coordinatedURL, to: stagedURL)
+        }
+
         let descriptor = try await packageRepository.createPDF(
-            from: sourceURL,
+            from: stagedURL,
             at: destinationURL
         )
         let attributes = noteRepository.fileAttributes(at: destinationURL)
